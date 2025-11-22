@@ -1,19 +1,14 @@
 <template>
   <div v-if="product" class="detail">
-    <img :src="product.imageUrl" :alt="product.name" class="detail-image" />
-
-    <div class="detail-info">
+    <!-- Información del producto -->
+    <div class="product-info">
+      <img :src="product.imageUrl" :alt="product.name" class="detail-image" />
       <h1>{{ product.name }}</h1>
-
       <p class="category">
         Categoría: <strong>{{ formatCategory(product.category) }}</strong>
       </p>
-
       <p class="price">${{ product.price }}</p>
-
-      <p class="desc">
-        {{ product.description }}
-      </p>
+      <p class="desc">{{ product.description }}</p>
 
       <!-- Selector de cantidad -->
       <div class="qty-wrapper">
@@ -27,12 +22,37 @@
 
       <!-- Botones de acción -->
       <div class="button-row">
-        <button class="btn-add" @click="addProduct">
-          Añadir al carrito
-        </button>
-        <button class="btn-buy" @click="buyNow">
-          Comprar ahora
-        </button>
+        <button class="btn-add" @click="addProduct">Añadir al carrito</button>
+        <button class="btn-buy" @click="buyNow">Comprar ahora</button>
+      </div>
+    </div>
+
+    <!-- Formulario para agregar reseñas -->
+    <div class="review-section">
+      <ReviewForm @new-review="addNewReview" />
+    </div>
+
+    <!-- Mostrar las reseñas (debajo del formulario) -->
+    <div class="reviews">
+      <h3>Reseñas</h3>
+      <div v-if="reviews.length > 0">
+        <div v-for="(review, index) in reviews" :key="index" class="review">
+          <!-- Estrellas -->
+          <div class="rating">
+            <span v-for="n in review.rating" :key="n" class="star">★</span>
+            <span v-for="n in (5 - review.rating)" :key="n" class="star-empty">★</span>
+          </div>
+
+          <!-- Comentario y Fecha -->
+          <p><strong>Comentario:</strong> {{ review.comment }}</p>
+          <p><small>{{ review.date }}</small></p>
+
+          <!-- Botón para eliminar reseña -->
+          <button class="btn-delete" @click="deleteReview(index)">Eliminar reseña</button>
+        </div>
+      </div>
+      <div v-else>
+        <p>Aún no hay reseñas para este producto.</p>
       </div>
     </div>
   </div>
@@ -43,19 +63,20 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductById } from '../data/products'
 import { useCart } from '../composables/useCart'
+import ReviewForm from '../components/ReviewForm.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { addToCart } = useCart()
 
-// producto según el id de la ruta
+// Producto según el id de la ruta
 const product = computed(() => getProductById(route.params.id))
 
-// cantidad seleccionada
+// Cantidad seleccionada
 const quantity = ref(1)
 
 const incrementQty = () => {
@@ -66,40 +87,62 @@ const decrementQty = () => {
   if (quantity.value > 1) quantity.value--
 }
 
-// solo agrega al carrito con la cantidad elegida
+// Añadir al carrito
 const addProduct = () => {
   if (!product.value) return
   addToCart(product.value, quantity.value)
 }
 
-// agrega y te lleva al carrito (luego puedes "PROCEDER CON EL PAGO")
+// Comprar ahora
 const buyNow = () => {
   if (!product.value) return
   addToCart(product.value, quantity.value)
   router.push('/cart')
 }
 
-const formatCategory = (cat) =>
-  cat.charAt(0).toUpperCase() + cat.slice(1)
+// Usar reactive para las reseñas
+const reviews = ref([])
+
+// Obtener las reseñas desde localStorage al cargar el producto
+onMounted(() => {
+  const storedReviews = JSON.parse(localStorage.getItem('reviews')) || []
+  reviews.value = storedReviews.filter(review => review.productId === product.value.id) // Filtramos por producto
+})
+
+// Agregar una nueva reseña a las existentes
+const addNewReview = (newReview) => {
+  newReview.productId = product.value.id
+  reviews.value.push(newReview) // Agregar la reseña a la lista reactiva
+  localStorage.setItem('reviews', JSON.stringify(reviews.value)) // Guardamos las reseñas actualizadas en localStorage
+}
+
+// Eliminar una reseña
+const deleteReview = (index) => {
+  reviews.value.splice(index, 1) // Eliminar la reseña en el índice indicado
+  localStorage.setItem('reviews', JSON.stringify(reviews.value)) // Guardar las reseñas actualizadas
+}
+
+// Formatear la categoría
+const formatCategory = (cat) => cat.charAt(0).toUpperCase() + cat.slice(1)
 </script>
 
 <style scoped>
 .detail {
   display: flex;
-  gap: 30px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+}
+
+.product-info {
+  max-width: 400px;
+  text-align: left;
 }
 
 .detail-image {
   max-width: 350px;
   border-radius: 10px;
-}
-
-.detail-info {
-  max-width: 400px;
-  text-align: left;
 }
 
 .price {
@@ -118,7 +161,7 @@ const formatCategory = (cat) =>
   line-height: 1.5;
 }
 
-/* Cantidad */
+/* Selector de cantidad */
 .qty-wrapper {
   display: flex;
   align-items: center;
@@ -184,6 +227,55 @@ const formatCategory = (cat) =>
 
 .btn-buy:hover {
   background-color: #e68a00;
+}
+
+/* Sección de reseñas */
+.reviews {
+  margin-top: 30px;
+  width: 100%;
+  text-align: left;
+}
+
+.review {
+  background-color: #f0f0f0;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.rating {
+  color: gold;
+}
+
+.star {
+  font-size: 1.5em;
+}
+
+.star-empty {
+  font-size: 1.5em;
+  color: #ddd;
+}
+
+.btn-delete {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.btn-delete:hover {
+  background-color: #e64a4a;
+}
+
+.review-section {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .not-found {

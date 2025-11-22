@@ -291,7 +291,7 @@ const formatCategory = (cat) =>
   margin: 8px 0;
 }
 
-/* ===== Botones nuevos (más pequeños) ===== */
+/* ===== Botones  ===== */
 
 .button-row {
   display: flex;
