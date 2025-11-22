@@ -113,7 +113,9 @@ onMounted(() => {
 const addNewReview = (newReview) => {
   newReview.productId = product.value.id
   reviews.value.push(newReview) // Agregar la reseña a la lista reactiva
-  localStorage.setItem('reviews', JSON.stringify(reviews.value)) // Guardamos las reseñas actualizadas en localStorage
+
+  // Guardamos las reseñas actualizadas en localStorage
+  localStorage.setItem('reviews', JSON.stringify(reviews.value))
 }
 
 // Eliminar una reseña
